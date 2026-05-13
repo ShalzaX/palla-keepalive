@@ -1,0 +1,27 @@
+name: Render Keep-Alive Ping
+
+# Public-repo GitHub Actions = UNLIMITED minutes (private repos are 2000/mo capped).
+# We ping the Render Web Service every 5 minutes so it never reaches the
+# 15-min HTTP-idle spin-down threshold.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # every 5 minutes — well under Render's 15 min idle
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping /health on palla-trade-bot
+        run: |
+          for i in 1 2 3; do
+            if curl -sS --max-time 30 "https://palla-trade-bot.onrender.com/health" | grep -q alive; then
+              echo "✅ ping attempt ${i} OK"
+              exit 0
+            fi
+            echo "⚠️ attempt ${i} failed (or cold-starting), retry in 15s"
+            sleep 15
+          done
+          echo "ℹ️ All attempts done — service may still be cold-starting"
